@@ -1,0 +1,67 @@
+/* Reset default margin and padding */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Body settings */
+body {
+  background-color: #333;
+  color: white;
+  font-family: Arial, sans-serif;
+  overflow: hidden;
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+/* Fullscreen canvas for the game */
+canvas {
+  display: block;
+  width: 100vw;
+  height: 100vh;
+}
+
+/* Death Screen */
+#deathScreen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 0, 0, 0.8);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  font-size: 2em;
+  z-index: 10;
+  text-align: center;
+}
+
+#deathScreen span {
+  font-size: 2em;
+  font-weight: bold;
+  animation: blink 1s infinite;
+}
+
+/* Keyframe animation for blinking text */
+@keyframes blink {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Custom cursor */
+body {
+  cursor: none;
+}
