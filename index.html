@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Stealth Camera Game</title>
+  <style>
+    body { margin: 0; overflow: hidden; }
+    canvas { display: block; }
+    #deathScreen {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(255, 0, 0, 0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-size: 2em;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+  <div id="deathScreen">You were caught by a camera!</div>
+  <canvas id="game"></canvas>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
