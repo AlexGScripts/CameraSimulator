@@ -1,28 +1,349 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Stealth Camera Game</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Useless Switch</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
-    body { margin: 0; overflow: hidden; }
-    canvas { display: block; }
-    #deathScreen {
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(255, 0, 0, 0.8);
-      display: none;
-      align-items: center;
-      justify-content: center;
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+      background-color: #111;
       color: white;
-      font-size: 2em;
-      z-index: 10;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      transition: background-color 0.5s, color 0.5s;
+    }
+
+    .container {
+      text-align: center;
+    }
+
+    .switch {
+      position: relative;
+      width: 80px;
+      height: 40px;
+      background: #444;
+      border-radius: 20px;
+      margin: 0 auto 20px;
+      cursor: pointer;
+    }
+
+    .switch::before {
+      content: "";
+      position: absolute;
+      top: 4px;
+      left: 4px;
+      width: 32px;
+      height: 32px;
+      background: white;
+      border-radius: 50%;
+      transition: left 0.3s;
+    }
+
+    .switch.on {
+      background: #ccc;
+    }
+
+    .switch.on::before {
+      left: 44px;
+    }
+
+    .message {
+      font-size: 1.2rem;
+      margin-top: 10px;
+      opacity: 0.7;
+    }
+
+    .rage {
+      animation: flash 0.2s alternate 5;
+    }
+
+    @keyframes flash {
+      from { background-color: red; }
+      to { background-color: #111; }
+    }
+
+    #resetButton, #fakeWinButton, #giveUpButton {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 8px;
+      background-color: #555;
+      color: white;
+      cursor: pointer;
+      display: none;
+    }
+
+    #fakeWinButton {
+      position: absolute;
+    }
+
+    #bsod {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background: #0000AA;
+      color: white;
+      font-family: monospace;
+      font-size: 1.2rem;
+      padding: 20px;
+      display: none;
+      z-index: 9999;
+    }
+
+    #chatbot {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 240px;
+      background: #222;
+      color: #fff;
+      border-radius: 12px;
+      padding: 15px;
+      font-size: 0.9rem;
+      box-shadow: 0 0 10px rgba(0,0,0,0.5);
+      display: none;
+      z-index: 999;
+    }
+    #chatbot button {
+      margin-top: 10px;
+      padding: 5px 10px;
+      border: none;
+      border-radius: 6px;
+      background: #444;
+      color: white;
+      cursor: pointer;
+    }
+
+    #clownScreen {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background: #ff69b4;
+      color: #fff;
+      font-size: 2rem;
+      text-align: center;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      z-index: 10000;
+      font-weight: bold;
+      animation: honk 0.3s infinite alternate;
+    }
+
+    @keyframes honk {
+      0% { transform: rotate(-1deg); }
+      100% { transform: rotate(1deg); }
     }
   </style>
 </head>
 <body>
-  <div id="deathScreen">You were caught by a camera!</div>
-  <canvas id="game"></canvas>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.150.1/build/three.min.js"></script>
-  <script src="game.js"></script>
+  <div class="container">
+    <div class="switch" id="uselessSwitch"></div>
+    <div class="message" id="message">Go ahead, try it...</div>
+    <button id="resetButton">Reset Game</button>
+    <button id="fakeWinButton">Click to Win!</button>
+    <button id="giveUpButton">Screw This</button>
+  </div>
+  <div id="bsod">
+    A problem has been detected and your effort has been terminated.<br><br>
+    Attempt count overflow.<br>
+    System will reboot shortly.
+  </div>
+  <div id="chatbot">
+    <div id="chatbotMessage">Looks like you're trying to win. Let me help...</div>
+    <button onclick="hideChatbot()">Thanks, go away</button>
+  </div>
+  <div id="clownScreen">
+    🤡🎪 You gave up. Honk honk. 🎪🤡
+  </div>
+  <script>
+    const switchEl = document.getElementById('uselessSwitch');
+    const messageEl = document.getElementById('message');
+    const resetButton = document.getElementById('resetButton');
+    const fakeWinButton = document.getElementById('fakeWinButton');
+    const giveUpButton = document.getElementById('giveUpButton');
+    const bsodEl = document.getElementById('bsod');
+    const chatbot = document.getElementById('chatbot');
+    const chatbotMessage = document.getElementById('chatbotMessage');
+    const clownScreen = document.getElementById('clownScreen');
+
+    let attemptCount = 0;
+    let holdTimer = null;
+    let Reset = null;
+    let defeated = false;
+    let locked = false;
+
+    const trollMessages = [
+      "That would’ve worked yesterday.",
+      "Try flipping your monitor.",
+      "You just unlocked NOTHING!",
+      "Almost... not really.",
+      "This is the way. The wrong way."
+    ];
+
+    const chatbotLines = [
+      "Looks like you're trying to win. Let me help...",
+      "Have you tried... giving up?",
+      "This button is purely decorative.",
+      "Winning is just a state of mind. A losing one.",
+      "Trust me, I’m an AI. Not a good one, though."
+    ];
+
+    function playSound(url) {
+      const audio = new Audio(url);
+      audio.play();
+    }
+
+    function moveFakeWinButton() {
+      const x = Math.random() * (window.innerWidth - 120);
+      const y = Math.random() * (window.innerHeight - 50);
+      fakeWinButton.style.left = `${x}px`;
+      fakeWinButton.style.top = `${y}px`;
+    }
+
+    switchEl.addEventListener('mousedown', () => {
+      if (defeated || locked) return;
+      locked = true;
+
+      switchEl.classList.add('on');
+      document.body.style.backgroundColor = '#f0f0f0';
+      document.body.style.color = '#000';
+
+      holdTimer = setTimeout(() => {
+        defeated = true;
+        messageEl.textContent = "You beat the useless machine. But at what cost?";
+        document.body.style.backgroundColor = '#fdf6e3';
+        document.body.style.color = '#000';
+        resetButton.style.display = 'inline-block';
+        confetti();
+        setTimeout(() => {
+          messageEl.textContent = "Just kidding. Start over.";
+          resetButton.click();
+        }, 3000);
+      }, 5000);
+
+      Reset = setTimeout(() => {
+        if (!defeated) {
+          switchEl.classList.remove('on');
+          document.body.style.backgroundColor = '#111';
+          document.body.style.color = '#fff';
+          locked = false;
+        }
+      }, 5000);
+    });
+
+    switchEl.addEventListener('mouseup', () => {
+      if (defeated) return;
+      clearTimeout(holdTimer);
+      clearTimeout(Reset);
+      attemptCount++;
+
+      if (attemptCount === 10) {
+        messageEl.textContent = "You okay?";
+        playSound('boing.mp3');
+      } else if (attemptCount === 25) {
+        messageEl.textContent = "Still going?";
+        playSound('clown_horn.mp3');
+      } else if (attemptCount === 30) {
+        fakeWinButton.style.display = 'inline-block';
+        moveFakeWinButton();
+        messageEl.textContent = "Finally, a win button!";
+      } else if (attemptCount === 50) {
+        messageEl.textContent = "Why are you like this?";
+        document.body.classList.add('rage');
+        playSound('windows_error.mp3');
+        setTimeout(() => document.body.classList.remove('rage'), 1000);
+      } else if (attemptCount === 100) {
+        bsodEl.style.display = 'block';
+        setTimeout(() => location.reload(), 5000);
+      } else {
+        if (Math.random() < 0.25) {
+          messageEl.textContent = trollMessages[Math.floor(Math.random() * trollMessages.length)];
+        } else {
+          messageEl.textContent = `Nice try. Attempts: ${attemptCount}`;
+        }
+      }
+
+      if (attemptCount >= 10 && !defeated) {
+        giveUpButton.style.display = 'inline-block';
+      }
+
+      setTimeout(() => {
+        switchEl.classList.remove('on');
+        document.body.style.backgroundColor = '#111';
+        document.body.style.color = '#fff';
+        locked = false;
+      }, 1000 + Math.random() * 2000);
+    });
+
+    fakeWinButton.addEventListener('mouseover', moveFakeWinButton);
+
+    resetButton.addEventListener('click', () => {
+      attemptCount = 0;
+      defeated = false;
+      locked = false;
+      messageEl.textContent = "Go ahead, try it...";
+      document.body.style.backgroundColor = '#111';
+      document.body.style.color = '#fff';
+      switchEl.classList.remove('on');
+      resetButton.style.display = 'none';
+      giveUpButton.style.display = 'none';
+      fakeWinButton.style.display = 'none';
+      bsodEl.style.display = 'none';
+      clownScreen.style.display = 'none';
+    });
+
+    giveUpButton.addEventListener('click', () => {
+      if (window.innerWidth <= 768) {
+        // Mobile torture: clown dance
+        clownScreen.style.display = 'flex';
+        setTimeout(() => {
+          clownScreen.style.display = 'none';
+        }, 10000);
+      } else {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const date = new Date().toLocaleString();
+
+        doc.setFontSize(22);
+        doc.text("Certificate of Glorious Defeat", 20, 40);
+        doc.setFontSize(14);
+        doc.text(`You gave up after just ${attemptCount} attempts.`, 20, 60);
+        doc.text(`Issued on: ${date}`, 20, 70);
+        doc.text("🥇", 20, 90);
+
+        doc.save("useless_defeat_certificate.pdf");
+      }
+    });
+
+    function confetti() {
+      if (typeof confetti !== 'undefined') confetti();
+    }
+
+    function showChatbot() {
+      chatbotMessage.textContent = chatbotLines[Math.floor(Math.random() * chatbotLines.length)];
+      chatbot.style.display = 'block';
+    }
+
+    function hideChatbot() {
+      chatbot.style.display = 'none';
+      scheduleChatbot();
+    }
+
+    function scheduleChatbot() {
+      const randomTime = Math.random() * 15000 + 5000;
+      setTimeout(showChatbot, randomTime);
+    }
+
+    scheduleChatbot();
+  </script>
 </body>
 </html>
